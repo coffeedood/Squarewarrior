@@ -1,5 +1,5 @@
 
-userinput = input("type playlist or musicplayer")
+userinput = input("type playlist or musicplaotheryer")
 if userinput == "playlist":
     import os
     import urllib.parse
