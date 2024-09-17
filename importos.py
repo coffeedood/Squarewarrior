@@ -1,663 +1,603 @@
-
-userinput = input("type playlist or musicplaotheryer")
-if userinput == "playlist":
-    import os
-    import urllib.parse
-    import tkinter as tk
-    from tkinter import filedialog, messagebox, scrolledtext
-    from natsort import natsorted
-    import os
-    import tkinter as tk
-    from tkinter import filedialog, messagebox
-    import urllib.parse
-    from natsort import natsorted  # You may need to install this package: pip install natsort
-    import string  # Import string module for character validation
-
-    import os
-    import tkinter as tk
-    from tkinter import filedialog, messagebox
-    import urllib.parse
-    from natsort import natsorted  # You may need to install this package: pip install natsort
-    import string  # Import string module for character validation
-
-    MAX_FILENAME_LENGTH = 245  # Maximum length for playlist filenames
-
-    import os
-    import tkinter as tk
-    from tkinter import filedialog, messagebox
-    import urllib.parse
-    from natsort import natsorted  # You may need to install this package: pip install natsort
-    import string  # Import string module for character validation
-    import os
-    import re
-    import urllib.parse
-    import string
-    import tkinter as tk
-    from tkinter import filedialog, scrolledtext, messagebox
-    from natsort import natsorted
-    import pygame
-
-    MAX_FILENAME_LENGTH = 245  # Maximum length for playlist filenames
-
-    class MusicPlaylistGenerator:
-        def __init__(self):
-            self.music_source_dir = ""
-            self.playlist_dest_dir = ""
-
-        def set_directories(self, music_source_dir, playlist_dest_dir):
-            self.music_source_dir = music_source_dir
-            self.playlist_dest_dir = playlist_dest_dir
-
-        def create_artist_playlists_from_folder(self):
-            try:
-                if not os.path.exists(self.music_source_dir) or not os.path.isdir(self.music_source_dir):
-                    print(f"Error: Music source directory '{self.music_source_dir}' not found.")
-                    return False
-
-                if not os.path.exists(self.playlist_dest_dir):
-                    os.makedirs(self.playlist_dest_dir)
-
-                artist_playlists = {}
-
-                # Walk through the music source directory
-                for root, dirs, files in os.walk(self.music_source_dir):
-                    for file in files:
-                        if file.lower().endswith('.aif') or file.lower().endswith('.aiff'):
-                            artist_name = os.path.basename(os.path.dirname(root))
-                            if artist_name not in artist_playlists:
-                                artist_playlists[artist_name] = []
-
-                            song_path = os.path.abspath(os.path.join(root, file))
-                            encoded_path = urllib.parse.quote(song_path)
-
-                            # Add the song to the artist's playlist
-                            artist_playlists[artist_name].append(f'file:///{encoded_path}')
-
-                # Create or update playlists for each artist
-                for artist_name, songs in artist_playlists.items():
-                    # Sort songs naturally
-                    songs = natsorted(songs)
-
-                    # Create the playlist title and file name
-                    playlist_title = f'{artist_name}'
-                    playlist_name = self.sanitize_playlist_name(playlist_title)
-                    playlist_name = playlist_name[:MAX_FILENAME_LENGTH - len('.m3u')]
-                    playlist_path = os.path.join(self.playlist_dest_dir, f'{playlist_name}.m3u')
-
-                    # Write playlist file
-                    with open(playlist_path, 'w', encoding='utf-8') as playlist_file:
-                        for song in songs:
-                            playlist_file.write(f'# Song: {os.path.basename(urllib.parse.unquote(song))}\n')
-                            playlist_file.write(f'{song}\n')
-
-                    print(f"Written artist playlist to {playlist_name}.m3u")
-
-                return True
-
-            except Exception as e:
-                print(f"Error occurred while creating artist playlists: {e}")
-                return False
-
-        def create_album_playlists_from_folder(self):
-            try:
-                if not os.path.exists(self.music_source_dir) or not os.path.isdir(self.music_source_dir):
-                    print(f"Error: Music source directory '{self.music_source_dir}' not found.")
-                    return False
-
-                if not os.path.exists(self.playlist_dest_dir):
-                    os.makedirs(self.playlist_dest_dir)
-
-                for root, dirs, files in os.walk(self.music_source_dir):
-                    songs = [file for file in files if file.lower().endswith(('.aif', '.aiff')) and not file.startswith('._')]
-                    if songs:
-                        artist_name = os.path.basename(os.path.dirname(root))
-                        album_name = os.path.basename(root)
-
-                        songs = natsorted(songs)
-
-                        playlist_title = f'{album_name} {artist_name}'
-                        playlist_name = self.sanitize_playlist_name(playlist_title)
-                        playlist_name = playlist_name[:MAX_FILENAME_LENGTH - len('.m3u')]
-
-                        song_playlist_path = os.path.join(self.playlist_dest_dir, f'{playlist_name}.m3u')
-                        with open(song_playlist_path, 'w', encoding='utf-8') as song_playlist_file:
-                            for song in songs:
-                                title = os.path.splitext(song)[0]
-                                encoded_path = urllib.parse.quote(os.path.abspath(os.path.join(root, song)))
-                                song_playlist_file.write(f'# Song: {title}\n')
-                                song_playlist_file.write(f'file:///{encoded_path}\n')
-                                self.create_individual_song_playlist(title, os.path.abspath(os.path.join(root, song)))
-                        print(f"Written album playlist to {playlist_name}.m3u")
-
-                return True
-
-            except Exception as e:
-                print(f"Error occurred while creating album playlists: {e}")
-                return False
-
-        def create_song_playlists_from_folder(self):
-            try:
-                if not os.path.exists(self.music_source_dir) or not os.path.isdir(self.music_source_dir):
-                    print(f"Error: Music source directory '{self.music_source_dir}' not found.")
-                    return False
-
-                if not os.path.exists(self.playlist_dest_dir):
-                    os.makedirs(self.playlist_dest_dir)
-
-                for root, dirs, files in os.walk(self.music_source_dir):
-                    songs = [file for file in files if file.lower().endswith(('.aif', '.aiff')) and not file.startswith('._')]
-                    if songs:
-                        artist_name = os.path.basename(os.path.dirname(root))
-                        album_name = os.path.basename(root)
-
-                        # Sort the songs using natural sorting
-                        songs = natsorted(songs)
-
-                        for i, song in enumerate(songs):
-                            title = os.path.splitext(song)[0]
-                            playlist_title = f'{title} {album_name} {artist_name}appended'
-                            playlist_name = playlist_title[:MAX_FILENAME_LENGTH - len('.m3u')]
-
-                            song_playlist_path = os.path.join(self.playlist_dest_dir, f'{playlist_name}.m3u')
-                            with open(song_playlist_path, 'w', encoding='utf-8') as song_playlist_file:
-                                for next_song in songs[i:] + songs[:i]:
-                                    next_title = os.path.splitext(next_song)[0]
-                                    next_playlist_title = f'{next_title} {album_name} {artist_name}appended'
-                                    next_playlist_name = next_playlist_title[:MAX_FILENAME_LENGTH - len('.m3u')]
-                                    encoded_path = urllib.parse.quote(os.path.abspath(os.path.join(root, next_song)))
-
-                                    song_playlist_file.write(f'# Song: {next_title}\n')
-                                    song_playlist_file.write(f'file:///{encoded_path}\n')
-
-                                print(f"Written to {playlist_name}.m3u")
-
-                return True
-
-            except Exception as e:
-                print(f"Error occurred while creating song playlists: {e}")
-                return False
-
-        def create_individual_song_playlist(self, song_title, song_path):
-            try:
-                playlist_name = self.sanitize_playlist_name(song_title)
-                playlist_name = playlist_name[:MAX_FILENAME_LENGTH - len('.m3u')]
-                song_playlist_path = os.path.join(self.playlist_dest_dir, f'{playlist_name}.m3u')
-
-                with open(song_playlist_path, 'w', encoding='utf-8') as song_playlist_file:
-                    title = os.path.splitext(os.path.basename(song_path))[0]
-                    encoded_path = urllib.parse.quote(song_path)
-                    song_playlist_file.write(f'# Song: {title}\n')
-                    song_playlist_file.write(f'file:///{encoded_path}\n')
-
-                print(f"Written individual song playlist to {playlist_name}.m3u")
-
-                return True
-
-            except Exception as e:
-                print(f"Error occurred while creating individual song playlist: {e}")
-                return False
-
-        def sanitize_playlist_name(self, name):
-            valid_chars = '-_.() %s%s' % (string.ascii_letters, string.digits)
-            return ''.join(c for c in name if c in valid_chars)
-
-
-    class MusicPlayerGUI(tk.Tk):
-        def __init__(self):
-            super().__init__()
-            self.title("Music Playlist Generator")
-            self.geometry("600x400")
-
-            self.playlist_generator = MusicPlaylistGenerator()
-
-            # Directory selection labels and buttons
-            self.lbl_music_source = tk.Label(self, text="Select Music Source Directory:")
-            self.lbl_music_source.pack(pady=10)
-
-            self.btn_select_music_source = tk.Button(self, text="Select Folder", command=self.select_music_source)
-            self.btn_select_music_source.pack(pady=5)
-
-            self.lbl_playlist_dest = tk.Label(self, text="Select Playlist Destination Directory:")
-            self.lbl_playlist_dest.pack(pady=10)
-
-            self.btn_select_playlist_dest = tk.Button(self, text="Select Folder", command=self.select_playlist_dest)
-            self.btn_select_playlist_dest.pack(pady=5)
-
-            # Buttons for generating playlists
-            self.btn_generate_artist_playlists = tk.Button(self, text="Generate Artist Playlists", command=self.generate_artist_playlists)
-            self.btn_generate_artist_playlists.pack(pady=5)
-
-            self.btn_generate_album_playlists = tk.Button(self, text="Generate Album Playlists", command=self.generate_album_playlists)
-            self.btn_generate_album_playlists.pack(pady=5)
-
-            self.btn_generate_song_playlists = tk.Button(self, text="Generate Song Playlists", command=self.generate_song_playlists)
-            self.btn_generate_song_playlists.pack(pady=5)
-
-            self.txt_output = scrolledtext.ScrolledText(self, width=70, height=10)
-            self.txt_output.pack(pady=10)
-
-        def select_music_source(self):
-            self.music_source_dir = filedialog.askdirectory()
-            if self.music_source_dir:
-                self.lbl_music_source.config(text=f"Music Source Directory: {self.music_source_dir}")
-                self.playlist_generator.music_source_dir = self.music_source_dir
-
-        def select_playlist_dest(self):
-            self.playlist_dest_dir = filedialog.askdirectory()
-            if self.playlist_dest_dir:
-                self.lbl_playlist_dest.config(text=f"Playlist Destination Directory: {self.playlist_dest_dir}")
-                self.playlist_generator.playlist_dest_dir = self.playlist_dest_dir
-
-        def generate_artist_playlists(self):
-            success = self.playlist_generator.create_artist_playlists_from_folder()
-            messagebox.showinfo("Info", "Artist playlists generated successfully!" if success else "Failed to generate artist playlists.")
-            self.log_output("Artist playlists generation completed.")
-
-        def generate_album_playlists(self):
-            success = self.playlist_generator.create_album_playlists_from_folder()
-            messagebox.showinfo("Info", "Album playlists generated successfully!" if success else "Failed to generate album playlists.")
-            self.log_output("Album playlists generation completed.")
-
-        def generate_song_playlists(self):
-            success = self.playlist_generator.create_song_playlists_from_folder()
-            messagebox.showinfo("Info", "Song playlists generated successfully!" if success else "Failed to generate song playlists.")
-            self.log_output("Song playlists generation completed.")
-
-        def log_output(self, message):
-            self.txt_output.insert(tk.END, message + '\n')
-            self.txt_output.yview(tk.END)
-
-
-    if __name__ == "__main__":
-        pygame.mixer.init()
-        app = MusicPlayerGUI()
-        app.mainloop()
-
-else:
-    import os
-    import random
-    import threading
-    import tkinter as tk
-    from tkinter import filedialog, scrolledtext
-    import pygame
-    import urllib.parse
-    import string
-    from difflib import SequenceMatcher  # For finding closest match
-
-    MAX_FILENAME_LENGTH = 245  # Maximum length for playlist filenames
-
-    class MusicPlayer:
-        def __init__(self):
-            self.playlists_history = []  # To keep track of played playlists
-            self.current_playlist = []   # To store the current playlist being played
-            self.current_index = 0       # Index of the current song in the playlist
-            self.playlist_path = ""      # Path of the current playlist file
-            self.paused = False          # Flag to indicate if music is paused
-            self.running = True          # Flag to indicate if the player is running
-            self.volume = 0.5            # Initial volume setting (0.0 to 1.0)
-
-            self.track_finished_thread = threading.Thread(target=self.track_finished_event)
-            self.track_finished_thread.start()  # Start the track monitoring thread
-
-        def load_playlist(self, playlist_path):
-            try:
-                if not os.path.isfile(playlist_path):
-                    print(f"Error: Playlist file '{playlist_path}' not found.")
-                    return False
-
-                self.stop()  # Stop current playing
-                self.current_playlist.clear()  # Clear current playlist
-                self.current_index = 0  # Reset current index
-                self.playlist_path = playlist_path  # Track current playlist path
-
-                with open(playlist_path, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                    for line in lines:
-                        line = line.strip()
-                        if line.startswith('#EXTM3U') or line.startswith('#EXTINF'):
-                            continue  # Skip m3u header and info lines
-                        elif line.startswith('# Song:'):
-                            continue  # Skip specific comment lines
-                        elif line.startswith('file://'):
-                            media_path = line.replace('file:///', '')
-                            media_path = urllib.parse.unquote(media_path)  # Decode URL encoding
-                            if os.path.exists(media_path):
-                                self.current_playlist.append(media_path)
-                            else:
-                                print(f"Skipping unknown or inaccessible file: {media_path}")
-                        else:
-                            print(f"Skipping unrecognized entry in playlist: {line}")
-
-                if self.current_playlist:
-                    print(f"Playlist '{os.path.basename(playlist_path)}' loaded successfully.")
-                    self.update_playlists_history()  # Update history with the current playlist
-                    self.play()
-                    return True
-                else:
-                    print(f"No valid media files found in playlist '{os.path.basename(playlist_path)}'.")
-                    return False
-
-            except Exception as e:
-                print(f"Error occurred while loading playlist '{playlist_path}': {e}")
-                return False
-
-        def play(self):
-            if not self.current_playlist:
-                print("Playlist is empty. Load a playlist first.")
-                return
-
-            if self.paused:
-                pygame.mixer.music.unpause()
-                self.paused = False
-                print(f"Resumed playing: {os.path.basename(self.current_playlist[self.current_index])}")
-            else:
-                pygame.mixer.music.load(self.current_playlist[self.current_index])
-                pygame.mixer.music.set_volume(self.volume)  # Set initial volume
-                pygame.mixer.music.play()
-                print(f"Now playing: {os.path.basename(self.current_playlist[self.current_index])}")
-
-        def pause(self):
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.pause()
-                self.paused = True
-                print("Music paused.")
-
-        def stop(self):
-            pygame.mixer.music.stop()
-            self.paused = False
-            print("Music stopped.")
-
-        def next_track(self):
-            if not self.current_playlist:
-                print("Playlist is empty. Load a playlist first.")
-                return
-
-            # Check if there's another track in the current playlist
-            while self.current_index + 1 < len(self.current_playlist):
-                self.current_index += 1
-                next_track_path = self.current_playlist[self.current_index]
-                if os.path.exists(next_track_path):
-                    self.play()
-                    return next_track_path
-                else:
-                    print(f"Skipping unknown or inaccessible file: {next_track_path}")
-
-            # If no valid next track found, move to the next playlist in history
-            self.advance_history()
-
-            # Play the track from the new playlist or update history accordingly
-            if self.current_playlist:
-                self.play()
-                return self.current_playlist[self.current_index]
-            else:
-                print("No next track or playlist in history.")
-
-        def previous_track(self):
-            if not self.current_playlist:
-                print("Playlist is empty. Load a playlist first.")
-                return
-
-            # Check if there's a previous track in the current playlist
-            if self.current_index > 0:
-                self.current_index -= 1
-            else:
-                # Move to the previous playlist in history
-                self.rewind_history()
-
-            # Play the previous track
-            self.play()
-
-            return self.current_playlist[self.current_index]
-
-        def advance_history(self):
-            # Move to the next playlist in history
-            if self.playlists_history:
-                self.playlists_history.append(self.playlists_history.pop(0))  # Move first element to the end
-                self.current_playlist, self.current_index = self.playlists_history[0]
-                print(f"Now playing: {os.path.basename(self.current_playlist[self.current_index])}")
-            else:
-                print("No next track or playlist in history.")
-
-        def rewind_history(self):
-            # Move to the previous playlist in history
-            if self.playlists_history:
-                self.playlists_history.insert(0, self.playlists_history.pop())  # Move last element to the beginning
-                self.current_playlist, self.current_index = self.playlists_history[0]
-                print(f"Previous track: {os.path.basename(self.current_playlist[self.current_index])}")
-            else:
-                print("No previous track or playlist in history.")
-
-        def track_finished_event(self):
-            while self.running:
-                if pygame.mixer.music.get_busy() == 0 and not self.paused:
-                    self.next_track()
-                pygame.time.wait(1000)  # Wait for 1 second between checks
-
-        def quit(self):
-            self.running = False
-
-        def set_volume(self, volume):
-            self.volume = volume
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.set_volume(self.volume)
-                print(f"Volume set to: {self.volume:.1f}")
-
-        def get_volume(self):
-            return self.volume
-
-        def update_playlists_history(self):
-            # Store the current playlist and current song index in the history
-            self.playlists_history.append((self.current_playlist.copy(), self.current_index))
-
-        def sanitize_playlist_name(self, playlist_title):
-            valid_chars = '-_.() %s%s' % (string.ascii_letters, string.digits)
-            return ''.join(c for c in playlist_title if c in valid_chars)
-
-
-    class MusicPlayerGUI:
-        def __init__(self, root):
-            self.root = root
-            self.root.title("Music Player")
-            self.root.geometry("800x600")
-
-            self.selected_folder = ""
-            self.player = MusicPlayer()
-
-            self.create_widgets()
-
-        def create_widgets(self):
-            self.btn_select_folder = tk.Button(self.root, text="Select Playlist Folder", command=self.select_playlist_folder)
-            self.btn_select_folder.pack(pady=10)
-
-            self.search_label = tk.Label(self.root, text="Search Playlist Title:")
-            self.search_label.pack()
-
-            self.search_entry = tk.Entry(self.root)
-            self.search_entry.pack(pady=5)
-            self.search_entry.bind("<Return>", lambda event: self.search_playlist())  # Bind <Return> key to search function
-
-            self.btn_search = tk.Button(self.root, text="Search Playlist", command=self.search_playlist)
-            self.btn_search.pack(pady=5)
-
-            self.btn_load_playlist = tk.Button(self.root, text="Load Playlist", command=self.load_playlist)
-            self.btn_load_playlist.pack(pady=10)
-
-            self.btn_previous_track = tk.Button(self.root, text="Previous Track", command=self.previous_track)
-            self.btn_previous_track.pack(pady=5)
-
-            self.btn_next_track = tk.Button(self.root, text="Next Track", command=self.next_track)
-            self.btn_next_track.pack(pady=5)
-
-            self.btn_pause = tk.Button(self.root, text="Pause", command=self.pause)
-            self.btn_pause.pack(pady=5)
-
-            self.btn_play = tk.Button(self.root, text="Play", command=self.play)
-            self.btn_play.pack(pady=5)
-
-            self.btn_stop = tk.Button(self.root, text="Stop", command=self.stop)
-            self.btn_stop.pack(pady=5)
-
-            self.btn_play_random = tk.Button(self.root, text="Play Random Song", command=self.play_random_song)
-            self.btn_play_random.pack(pady=5)
-
-            self.volume_scale = tk.Scale(self.root, from_=0.0, to=1.0, resolution=0.1, orient=tk.HORIZONTAL,
-                                        label="Volume", command=self.set_volume)
-            self.volume_scale.set(self.player.get_volume())
-            self.volume_scale.pack(pady=10)
-
-            self.text_widget = scrolledtext.ScrolledText(self.root, width=80, height=20, wrap=tk.WORD)
-            self.text_widget.pack(pady=10, padx=10)
-
-        def select_playlist_folder(self):
-            self.selected_folder = filedialog.askdirectory()
-            self.text_widget.insert(tk.END, f"Selected folder: {self.selected_folder}\n")
-
-        def load_playlist(self):
-            playlist_name = self.search_entry.get().strip()
-            if not playlist_name:
-                self.text_widget.insert(tk.END, "Please enter a playlist name to load.\n")
-                return
-
-            sanitized_name = self.player.sanitize_playlist_name(playlist_name)
-            playlist_path = os.path.join(self.selected_folder, f"{sanitized_name}.m3u")
-            if not os.path.isfile(playlist_path):
-                self.text_widget.insert(tk.END, f"Playlist '{playlist_name}' not found in '{self.selected_folder}'.\n")
-                return
-
-            if self.player.load_playlist(playlist_path):
-                self.text_widget.insert(tk.END, f"Playlist '{os.path.basename(playlist_path)}' loaded.\n")
-                self.update_history_file(playlist_name)
-            else:
-                self.text_widget.insert(tk.END, "Failed to load playlist.\n")
-
-        def search_playlist(self, event=None):
-            if not self.selected_folder:
-                self.text_widget.insert(tk.END, "Please select a playlist folder first.\n")
-                return
-
-            search_title = self.search_entry.get().strip()
-            if not search_title:
-                self.text_widget.insert(tk.END, "Please enter a title to search.\n")
-                return
-
-            self.text_widget.insert(tk.END, f"Searching playlists for: {search_title}\n")
-            search_thread = threading.Thread(target=self.search_playlists_thread, args=(search_title,))
-            search_thread.start()
-
-        def search_playlists_thread(self, search_title):
-            playlists = []
-            for root, dirs, files in os.walk(self.selected_folder):
-                for file in files:
-                    if file.endswith(".m3u"):
-                        playlists.append(os.path.join(root, file))
-
-            closest_match = self.find_closest_match(playlists, search_title)
-            if closest_match:
-                self.text_widget.insert(tk.END, f"Closest match found: {os.path.basename(closest_match)}\n")
-                if self.player.load_playlist(closest_match):
-                    self.search_entry.delete(0, tk.END)  # Clear the search entry after loading successfully
-                    self.update_history_file(os.path.splitext(os.path.basename(closest_match))[0])
-            else:
-                self.text_widget.insert(tk.END, f"No playlists found in '{self.selected_folder}'.\n")
-
-        def find_closest_match(self, playlists, search_title):
-            closest_match = None
-            max_similarity = -1
-
-            for playlist in playlists:
-                filename = os.path.basename(playlist)
-                similarity = SequenceMatcher(None, search_title.lower(), filename.lower()).ratio()
-                if similarity > max_similarity:
-                    max_similarity = similarity
-                    closest_match = playlist
-
-            return closest_match
-
-        def play_random_song(self):
-            if not self.selected_folder:
-                self.text_widget.insert(tk.END, "Please select a playlist folder first.\n")
-                return
-
-            history_playlist = os.path.join(self.selected_folder, "history.m3u")
-            if not os.path.isfile(history_playlist):
-                self.text_widget.insert(tk.END, f"Error: 'history.m3u' playlist not found in {self.selected_folder}.\n")
-                return
-
-            with open(history_playlist, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                valid_playlists = []
-                for line in lines:
-                    line = line.strip()
-                    if line.startswith('# Playlist:'):
-                        playlist_name = line[len('# Playlist:'):].strip()
-                        sanitized_name = self.player.sanitize_playlist_name(playlist_name)
-                        playlist_path = os.path.join(self.selected_folder, f"{sanitized_name}.m3u")
-                        if os.path.isfile(playlist_path):
-                            valid_playlists.append(playlist_path)
-
-                if valid_playlists:
-                    random_playlist = random.choice(valid_playlists)
-                    if self.player.load_playlist(random_playlist):
-                        self.text_widget.insert(tk.END, f"Playing random song from '{os.path.basename(random_playlist)}'.\n")
-                        # Do not update history for random songs
-                else:
-                    self.text_widget.insert(tk.END, f"No valid playlists found in 'history.m3u'.\n")
-
-        def previous_track(self):
-            self.player.previous_track()
-            if self.player.current_playlist:
-                self.text_widget.insert(tk.END, f"Previous track: {os.path.basename(self.player.current_playlist[self.player.current_index])}\n")
-
-        def next_track(self):
-            next_track = self.player.next_track()
-            if next_track:
-                self.text_widget.insert(tk.END, f"Now playing: {os.path.basename(next_track)}\n")
-
-        def pause(self):
-            self.player.pause()
-            self.text_widget.insert(tk.END, "Music paused.\n")
-
-        def play(self):
-            self.player.play()
-            self.text_widget.insert(tk.END, "Music playing.\n")
-
-        def stop(self):
-            self.player.stop()
-            self.text_widget.insert(tk.END, "Music stopped.\n")
-
-        def set_volume(self, volume):
-            self.player.set_volume(float(volume))
-
-        def run(self):
-            self.root.mainloop()
-
-        def update_history_file(self, playlist_title):
-            if playlist_title.startswith("Random Song from"):
-                # Skip updating history for random songs
-                return
-
-            history_playlist = os.path.join(self.selected_folder, "history.m3u")
-            playlist_entry = f"# Playlist: {playlist_title}\n"
-
-            # Check if playlist title already exists in history.m3u
-            if os.path.isfile(history_playlist):
-                with open(history_playlist, 'r', encoding='utf-8') as f:
-                    lines = f.readlines()
-                
-                if playlist_entry in lines:
-                    return  # Playlist entry already exists, no need to append
-
-            # Append playlist entry to history.m3u
-            with open(history_playlist, 'a', encoding='utf-8') as f:
-                f.write(playlist_entry)
-
-        def stop_music(self):
-            self.player.stop()
-            self.root.destroy()
-
-
-    if __name__ == "__main__":
-        pygame.init()
-        root = tk.Tk()
-        app = MusicPlayerGUI(root)
-        app.run()
+import tkinter as tk
+from tkinter import messagebox, filedialog
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+import json
+import os
+
+# File paths
+PROFILES_FILE = "profiles.json"
+
+# Function to load profiles from JSON file
+def load_profiles():
+    if os.path.exists(PROFILES_FILE):
+        with open(PROFILES_FILE, "r") as file:
+            return json.load(file)
+    return []
+
+# Function to save profiles to JSON file
+def save_to_json(profiles, filename):
+    with open(filename, "w") as file:
+        json.dump(profiles, file, indent=4)
+
+# Initialize profiles
+profiles = load_profiles()
+
+# Function to create a new profile
+def create_profile_window():
+    create_window = tk.Toplevel()
+    create_window.title("Create New Profile")
+
+    tk.Label(create_window, text="Profile Name:").pack(pady=10)
+    name_entry = tk.Entry(create_window)
+    name_entry.pack()
+
+    def save_profile():
+        profile_name = name_entry.get()
+        if not profile_name:
+            messagebox.showwarning("Input Error", "Profile name cannot be empty.")
+            return
+
+        if any(p['name'] == profile_name for p in profiles):
+            messagebox.showwarning("Profile Exists", f"Profile '{profile_name}' already exists.")
+            return
+
+        new_profile = {
+            'name': profile_name,
+            'vehicles': [],
+            'contacts': [],
+        }
+        profiles.append(new_profile)
+        save_to_json(profiles, PROFILES_FILE)
+        profiles_listbox.insert(tk.END, profile_name)
+        create_window.destroy()
+
+    tk.Button(create_window, text="Save Profile", command=save_profile).pack(pady=10)
+
+# Function to delete a highlighted profile
+def delete_profile():
+    selected_index = profiles_listbox.curselection()
+    if not selected_index:
+        messagebox.showwarning("Selection Error", "No profile selected.")
+        return
+
+    selected_index = selected_index[0]
+    selected_profile = profiles[selected_index]
+    
+    # Confirm profile deletion
+    confirm = messagebox.askyesno("Delete Profile", f"Are you sure you want to delete '{selected_profile['name']}'?")
+    if confirm:
+        profiles.pop(selected_index)
+        save_to_json(profiles, PROFILES_FILE)
+        
+        # Update the listbox
+        profiles_listbox.delete(selected_index)
+        update_selected_profile_labels()  # Clear the labels after deletion
+
+def open_real_estate_window(profile_name):
+    profile = next((p for p in profiles if isinstance(p, dict) and p['name'] == profile_name), None)
+    if not profile:
+        messagebox.showwarning("Profile Not Found", f"Profile '{profile_name}' not found.")
+        return
+
+    real_estate_window = tk.Toplevel()
+    real_estate_window.title(f"real_estate for Profile: {profile_name}")
+
+    real_estate_list = tk.Listbox(real_estate_window, width=50, height=20)
+    real_estate_list.pack(side=tk.LEFT, fill=tk.Y)
+
+    scrollbar = tk.Scrollbar(real_estate_window)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    real_estate_list.configure(yscrollcommand=scrollbar.set)
+    scrollbar.configure(command=real_estate_list.yview)
+
+    def print_real_estate():
+        real_estate_list.delete(0, tk.END)
+        for real_estate in profile.get('real_estate', []):
+            real_estate_info = f"Name: {real_estate['name']}, Email: {real_estate.get('email', '')}, Phone: {real_estate.get('phone', '')}"
+            real_estate_list.insert(tk.END, real_estate_info)
+
+    def add_real_estate():
+        add_real_estate_window = tk.Toplevel()
+        add_real_estate_window.title("Add real_estate")
+
+        tk.Label(add_real_estate_window, text="Name:").pack(pady=10)
+        name_entry = tk.Entry(add_real_estate_window)
+        name_entry.pack()
+
+        tk.Label(add_real_estate_window, text="Email Address:").pack(pady=10)
+        email_entry = tk.Entry(add_real_estate_window)
+        email_entry.pack()
+
+        tk.Label(add_real_estate_window, text="Phone Number:").pack(pady=10)
+        phone_entry = tk.Entry(add_real_estate_window)
+        phone_entry.pack()
+
+        def save_real_estate():
+            if 'real_estate' not in profile:
+                profile['real_estate'] = []  # Initialize 'real_estate' list if it doesn't exist
+            real_estate = {
+                'name': name_entry.get(),
+                'email': email_entry.get(),
+                'phone': phone_entry.get()
+            }
+            profile['real_estate'].append(real_estate)
+            save_to_json(profiles, PROFILES_FILE)
+            messagebox.showinfo("Success", "real_estate added successfully!")
+            print_real_estate()  # Update the real_estate listbox after adding a new real_estate
+            add_real_estate_window.destroy()
+
+        tk.Button(add_real_estate_window, text="Save real_estate", command=save_real_estate).pack(pady=20)
+
+
+    def edit_real_estate():
+        selected_index = real_estate_list.curselection()
+        if selected_index:
+            selected_real_estate = profile['real_estate'][selected_index[0]]
+            edit_real_estate_window = tk.Toplevel()
+            edit_real_estate_window.title("Edit real_estate")
+
+            tk.Label(edit_real_estate_window, text="Name:").pack(pady=10)
+            name_entry_edit = tk.Entry(edit_real_estate_window)
+            name_entry_edit.insert(0, selected_real_estate['name'])
+            name_entry_edit.pack()
+
+            tk.Label(edit_real_estate_window, text="Email Address:").pack(pady=10)
+            email_entry_edit = tk.Entry(edit_real_estate_window)
+            email_entry_edit.insert(0, selected_real_estate.get('email', ''))
+            email_entry_edit.pack()
+
+            tk.Label(edit_real_estate_window, text="Phone Number:").pack(pady=10)
+            phone_entry_edit = tk.Entry(edit_real_estate_window)
+            phone_entry_edit.insert(0, selected_real_estate.get('phone', ''))
+            phone_entry_edit.pack()
+
+            def save_changes():
+                selected_real_estate['name'] = name_entry_edit.get()
+                selected_real_estate['email'] = email_entry_edit.get()
+                selected_real_estate['phone'] = phone_entry_edit.get()
+                save_to_json(profiles, PROFILES_FILE)
+                messagebox.showinfo("Success", "real_estate updated successfully!")
+                print_real_estate()  # Update the real_estate listbox after editing a real_estate
+                edit_real_estate_window.destroy()
+
+            tk.Button(edit_real_estate_window, text="Save Changes", command=save_changes).pack(pady=20)
+        else:
+            messagebox.showwarning("No real_estate Selected", "Please select a real_estate to edit.")
+
+    def generate_pdf():
+        pdf_filename = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if pdf_filename:
+            c = canvas.Canvas(pdf_filename, pagesize=letter)
+            c.drawString(100, 750, f"Profile Information for: {profile_name}")
+            y_position = 720
+
+            # Print profile details
+            for key, value in profile.items():
+                if key == 'real_estate':
+                    continue  # Skip printing real_estate here
+                if isinstance(value, list) or isinstance(value, dict):
+                    value = json.dumps(value, indent=4)
+                profile_info = f"{key}: {value}"
+                c.drawString(100, y_position, profile_info)
+                y_position -= 20
+
+            # Print real_estate information
+            c.drawString(100, y_position, "real_estate:")
+            y_position -= 20
+            for real_estate in profile.get('real_estate', []):
+                real_estate_info = f"Name: {real_estate['name']}, Email: {real_estate.get('email', '')}, Phone: {real_estate.get('phone', '')}"
+                c.drawString(100, y_position, real_estate_info)
+                y_position -= 20
+
+            c.save()
+            messagebox.showinfo("PDF Generated", f"PDF generated successfully at {pdf_filename}")
+
+    tk.Button(real_estate_window, text="Add real_estate", command=add_real_estate).pack(pady=5)
+    tk.Button(real_estate_window, text="Edit real_estate", command=edit_real_estate).pack(pady=5)
+    tk.Button(real_estate_window, text="Generate PDF", command=generate_pdf).pack(pady=5)
+    
+    print_real_estate()
+
+# Function to open contacts window
+def open_contacts_window(profile_name):
+    profile = next((p for p in profiles if p['name'] == profile_name), None)
+    if not profile:
+        messagebox.showwarning("Profile Not Found", f"Profile '{profile_name}' not found.")
+        return
+
+    contacts_window = tk.Toplevel()
+    contacts_window.title(f"Contacts for Profile: {profile_name}")
+
+    contacts_list = tk.Listbox(contacts_window, width=50, height=20)
+    contacts_list.pack(side=tk.LEFT, fill=tk.Y)
+
+    scrollbar = tk.Scrollbar(contacts_window)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    contacts_list.configure(yscrollcommand=scrollbar.set)
+    scrollbar.configure(command=contacts_list.yview)
+
+    def print_contacts():
+        contacts_list.delete(0, tk.END)
+        for contact in profile.get('contacts', []):
+            contact_info = f"Name: {contact['name']}, Phone: {contact.get('phone', 'N/A')}, Email: {contact.get('email', 'N/A')}"
+            contacts_list.insert(tk.END, contact_info)
+
+    def add_contact():
+        add_contact_window = tk.Toplevel()
+        add_contact_window.title("Add Contact")
+
+        tk.Label(add_contact_window, text="Name:").pack(pady=10)
+        name_entry = tk.Entry(add_contact_window)
+        name_entry.pack()
+
+        tk.Label(add_contact_window, text="Phone:").pack(pady=10)
+        phone_entry = tk.Entry(add_contact_window)
+        phone_entry.pack()
+
+        tk.Label(add_contact_window, text="Email:").pack(pady=10)
+        email_entry = tk.Entry(add_contact_window)
+        email_entry.pack()
+
+        def save_contact():
+            selected_index = profiles_listbox.curselection()
+            if selected_index:
+                selected_index = selected_index[0]  # Get the first selected item
+
+            if 'contacts' not in profile:
+                profile['contacts'] = []
+            new_contact = {
+                'name': name_entry.get(),
+                'phone': phone_entry.get(),
+                'email': email_entry.get()
+            }
+            profile['contacts'].append(new_contact)
+            save_to_json(profiles, PROFILES_FILE)
+            print_contacts()
+            add_contact_window.destroy()
+
+            if selected_index is not None:
+                profiles_listbox.selection_set(selected_index)  # Re-select the profile
+                profiles_listbox.activate(selected_index)  # Ensure the selection is active
+                update_selected_profile_labels()  # Update the labels for the re-selected profile
+
+        tk.Button(add_contact_window, text="Save Contact", command=save_contact).pack(pady=10)
+
+    tk.Button(contacts_window, text="Add Contact", command=add_contact).pack(pady=10)
+    print_contacts()
+
+
+def open_contact2s2_window(profile_name):
+    profile = next((p for p in profiles if p['name'] == profile_name), None)
+    if not profile:
+        messagebox.showwarning("Profile Not Found", f"Profile '{profile_name}' not found.")
+        return
+
+    contact2s2_window = tk.Toplevel()
+    contact2s2_window.title(f"contact2s2 for Profile: {profile_name}")
+
+    contact2s2_list = tk.Listbox(contact2s2_window, width=50, height=20)
+    contact2s2_list.pack(side=tk.LEFT, fill=tk.Y)
+
+    scrollbar = tk.Scrollbar(contact2s2_window)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    contact2s2_list.configure(yscrollcommand=scrollbar.set)
+    scrollbar.configure(command=contact2s2_list.yview)
+
+    def print_contact2s2():
+        contact2s2_list.delete(0, tk.END)
+        for contact2 in profile.get('contact2s2', []):
+            contact2_info = f"Name: {contact2['name']}, Phone: {contact2.get('phone', 'N/A')}, Email: {contact2.get('email', 'N/A')}"
+            contact2s2_list.insert(tk.END, contact2_info)
+
+    def add_contact2():
+        add_contact2_window = tk.Toplevel()
+        add_contact2_window.title("Add contact2")
+
+        tk.Label(add_contact2_window, text="Name:").pack(pady=10)
+        name_entry = tk.Entry(add_contact2_window)
+        name_entry.pack()
+
+        tk.Label(add_contact2_window, text="Phone:").pack(pady=10)
+        phone_entry = tk.Entry(add_contact2_window)
+        phone_entry.pack()
+
+        tk.Label(add_contact2_window, text="Email:").pack(pady=10)
+        email_entry = tk.Entry(add_contact2_window)
+        email_entry.pack()
+
+        def save_contact2():
+            selected_index = profiles_listbox.curselection()
+            if selected_index:
+                selected_index = selected_index[0]  # Get the first selected item
+
+            if 'contact2s2' not in profile:
+                profile['contact2s2'] = []
+            new_contact2 = {
+                'name': name_entry.get(),
+                'phone': phone_entry.get(),
+                'email': email_entry.get()
+            }
+            profile['contact2s2'].append(new_contact2)
+            save_to_json(profiles, PROFILES_FILE)
+            print_contact2s2()
+            add_contact2_window.destroy()
+
+            if selected_index is not None:
+                profiles_listbox.selection_set(selected_index)  # Re-select the profile
+                profiles_listbox.activate(selected_index)  # Ensure the selection is active
+                update_selected_profile_labels()  # Update the labels for the re-selected profile
+
+        tk.Button(add_contact2_window, text="Save contact2", command=save_contact2).pack(pady=10)
+
+    tk.Button(contact2s2_window, text="Add contact2", command=add_contact2).pack(pady=10)
+    print_contact2s2()
+
+def open_contact3s3_window(profile_name):
+    profile = next((p for p in profiles if p['name'] == profile_name), None)
+    if not profile:
+        messagebox.showwarning("Profile Not Found", f"Profile '{profile_name}' not found.")
+        return
+
+    contact3s3_window = tk.Toplevel()
+    contact3s3_window.title(f"contact3s3 for Profile: {profile_name}")
+
+    contact3s3_list = tk.Listbox(contact3s3_window, width=50, height=20)
+    contact3s3_list.pack(side=tk.LEFT, fill=tk.Y)
+
+    scrollbar = tk.Scrollbar(contact3s3_window)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    contact3s3_list.configure(yscrollcommand=scrollbar.set)
+    scrollbar.configure(command=contact3s3_list.yview)
+
+    def print_contact3s3():
+        contact3s3_list.delete(0, tk.END)
+        for contact3 in profile.get('contact3s3', []):
+            contact3_info = f"Name: {contact3['name']}, Phone: {contact3.get('phone', 'N/A')}, Email: {contact3.get('email', 'N/A')}"
+            contact3s3_list.insert(tk.END, contact3_info)
+
+    def add_contact3():
+        add_contact3_window = tk.Toplevel()
+        add_contact3_window.title("Add contact3")
+
+        tk.Label(add_contact3_window, text="Name:").pack(pady=10)
+        name_entry = tk.Entry(add_contact3_window)
+        name_entry.pack()
+
+        tk.Label(add_contact3_window, text="Phone:").pack(pady=10)
+        phone_entry = tk.Entry(add_contact3_window)
+        phone_entry.pack()
+
+        tk.Label(add_contact3_window, text="Email:").pack(pady=10)
+        email_entry = tk.Entry(add_contact3_window)
+        email_entry.pack()
+
+        def save_contact3():
+            selected_index = profiles_listbox.curselection()
+            if selected_index:
+                selected_index = selected_index[0]  # Get the first selected item
+
+            if 'contact3s3' not in profile:
+                profile['contact3s3'] = []
+            new_contact3 = {
+                'name': name_entry.get(),
+                'phone': phone_entry.get(),
+                'email': email_entry.get()
+            }
+            profile['contact3s3'].append(new_contact3)
+            save_to_json(profiles, PROFILES_FILE)
+            print_contact3s3()
+            add_contact3_window.destroy()
+
+            if selected_index is not None:
+                profiles_listbox.selection_set(selected_index)  # Re-select the profile
+                profiles_listbox.activate(selected_index)  # Ensure the selection is active
+                update_selected_profile_labels()  # Update the labels for the re-selected profile
+
+        tk.Button(add_contact3_window, text="Save contact3", command=save_contact3).pack(pady=10)
+
+    tk.Button(contact3s3_window, text="Add contact3", command=add_contact3).pack(pady=10)
+    print_contact3s3()
+
+# Function to update the labels based on the selected profile
+def update_selected_profile_labels():
+    selected_index = profiles_listbox.curselection()
+    if selected_index:
+        selected_profile = profiles[selected_index[0]]
+
+        vehicles_complete = selected_profile.get('vehicles', False)
+        housing_complete = selected_profile.get('housing', False)
+        housing2_complete = selected_profile.get('housing2', False)
+        contacts_complete = len(selected_profile.get('contacts', [])) > 0
+        contacts_complete2 = len(selected_profile.get('contact2s2', [])) > 0
+        contacts_complete3 = len(selected_profile.get('contact3s3', [])) > 0
+
+        contacts_label.config(text="Complete" if contacts_complete else "Incomplete", fg="green" if contacts_complete else "red")
+        contacts_label2.config(text="Complete" if contacts_complete2 else "Incomplete", fg="green" if contacts_complete2 else "red")
+        contacts_label3.config(text="Complete" if contacts_complete3 else "Incomplete", fg="green" if contacts_complete3 else "red")
+
+# Function to generate a PDF for the selected profile
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import utils
+
+from reportlab.lib.pagesizes import letter
+
+def generate_pdf():
+    selected_index = profiles_listbox.curselection()
+    if not selected_index:
+        messagebox.showwarning("Selection Error", "No profile selected.")
+        return
+
+    profile = profiles[selected_index[0]]
+    pdf_file = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")], initialfile=f"{profile['name']}_profile.pdf")
+    
+    if not pdf_file:
+        return
+
+    # Create a canvas for the PDF
+    c = canvas.Canvas(pdf_file, pagesize=letter)
+    width, height = letter
+
+    # Define some margin and text wrapping configurations
+    margin_x = 50  # Left and right margin
+    margin_y = 50  # Top and bottom margin
+    max_text_width = width - 2 * margin_x  # Width available for text
+
+    # Start drawing the profile info
+    y = height - margin_y  # Starting position at the top of the page
+
+    # Utility function to wrap text to fit within the margins
+    def draw_wrapped_text(text, y, c, max_width, line_height=15):
+        lines = []
+        while text:
+            split_index = len(text)
+            while c.stringWidth(text[:split_index]) > max_width and split_index > 0:
+                split_index -= 1
+            lines.append(text[:split_index])
+            text = text[split_index:].lstrip()
+        for line in lines:
+            if y < margin_y:  # Check if we are running out of space on the page
+                c.showPage()  # Create a new page
+                y = height - margin_y  # Reset y position
+            c.drawString(margin_x, y, line)
+            y -= line_height
+        return y
+
+    # Draw profile name
+    y = draw_wrapped_text(f"Profile Name: {profile['name']}", y, c, max_text_width)
+
+    # Draw contacts
+    if profile.get('contacts'):
+        y = draw_wrapped_text("Contacts:", y - 20, c, max_text_width)
+        for contact in profile['contacts']:
+            # Separate name, phone, and email on different lines
+            y = draw_wrapped_text(f"Name: {contact['name']}", y - 10, c, max_text_width)
+            y = draw_wrapped_text(f"Phone: {contact.get('phone', 'N/A')}", y - 5, c, max_text_width)
+            y = draw_wrapped_text(f"Email: {contact.get('email', 'N/A')}", y - 5, c, max_text_width)
+            y -= 10  # Add extra spacing between different contacts
+    else:
+        y = draw_wrapped_text("Contacts: None", y - 20, c, max_text_width)
+
+    if profile.get('contact2s2'):
+        y = draw_wrapped_text("Contact2s2:", y - 20, c, max_text_width)
+        for contact in profile['contact2s2']:
+            # Separate name, phone, and email on different lines
+            y = draw_wrapped_text(f"Name: {contact['name']}", y - 10, c, max_text_width)
+            y = draw_wrapped_text(f"Phone: {contact.get('phone', 'N/A')}", y - 5, c, max_text_width)
+            y = draw_wrapped_text(f"Email: {contact.get('email', 'N/A')}", y - 5, c, max_text_width)
+            y -= 10  # Add extra spacing between different contacts
+    else:
+        y = draw_wrapped_text("Contacts: None", y - 20, c, max_text_width)
+    
+    if profile.get('contact3s3'):
+        y = draw_wrapped_text("Contact3s3:", y - 20, c, max_text_width)
+        for contact in profile['contact3s3']:
+            # Separate name, phone, and email on different lines
+            y = draw_wrapped_text(f"Name: {contact['name']}", y - 10, c, max_text_width)
+            y = draw_wrapped_text(f"Phone: {contact.get('phone', 'N/A')}", y - 5, c, max_text_width)
+            y = draw_wrapped_text(f"Email: {contact.get('email', 'N/A')}", y - 5, c, max_text_width)
+            y -= 10  # Add extra spacing between different contacts
+    else:
+        y = draw_wrapped_text("Contacts: None", y - 20, c, max_text_width)
+
+    # Draw vehicles section
+    vehicles_text = "Vehicles: Yes" if profile.get('vehicles') else "Vehicles: No"
+    y = draw_wrapped_text(vehicles_text, y - 20, c, max_text_width)
+
+    # Draw housing section
+    housing_text = "Housing: Yes" if profile.get('housing') else "Housing: No"
+    y = draw_wrapped_text(housing_text, y - 20, c, max_text_width)
+
+    # Draw housing2 section
+    housing2_text = "Housing2: Yes" if profile.get('housing2') else "Housing2: No"
+    y = draw_wrapped_text(housing2_text, y - 20, c, max_text_width)
+
+    # Save and close the PDF
+    c.save()
+    messagebox.showinfo("PDF Generated", f"PDF file '{pdf_file}' has been generated.")
+
+
+# Main window function
+def open_main_window():
+    global profiles_listbox, vehicles_label, housing_label, housing_label2, contacts_label, contacts_label2, contacts_label3
+
+    root = tk.Tk()
+    root.title("Profile Manager")
+
+    # Create a canvas for scrolling
+    canvas = tk.Canvas(root, borderwidth=0)
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Create a scrollbar for the canvas
+    scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Configure the canvas to work with the scrollbar
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Create a frame inside the canvas to hold the main content
+    content_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=content_frame, anchor="nw")
+
+    # Function to update the canvas scroll region
+    def update_scroll_region(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    content_frame.bind("<Configure>", update_scroll_region)
+
+    # Create a frame for the profiles listbox and scrollbar
+    profiles_frame = tk.Frame(content_frame)
+    profiles_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Create a scrollbar for the profiles listbox
+    profiles_scrollbar = tk.Scrollbar(profiles_frame, orient="vertical")
+    profiles_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Create the Listbox for profiles
+    profiles_listbox = tk.Listbox(profiles_frame, height=20, width=50, yscrollcommand=profiles_scrollbar.set)
+    profiles_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Configure the scrollbar for the listbox
+    profiles_scrollbar.config(command=profiles_listbox.yview)
+
+    # Bind profile selection to update labels
+    profiles_listbox.bind("<<ListboxSelect>>", lambda event: update_selected_profile_labels())
+
+  # Add buttons and labels to the content frame
+    tk.Button(content_frame, text="Create Profile", command=create_profile_window).pack(pady=5)
+    tk.Button(content_frame, text="Delete Profile", command=delete_profile).pack(pady=5)  # Delete Profile Button
+
+
+    # Section: Contacts
+    contacts_frame = tk.Frame(content_frame)
+    contacts_frame.pack(pady=5)
+    tk.Button(contacts_frame, text="Manage Contacts", command=lambda: open_contacts_window(profiles_listbox.get(tk.ACTIVE))).pack(side=tk.LEFT)
+    contacts_label = tk.Label(contacts_frame, text="Incomplete", fg="red")
+    contacts_label.pack(side=tk.LEFT, padx=10)
+
+
+    contacts_frame2 = tk.Frame(content_frame)
+    contacts_frame2.pack(pady=5)
+    tk.Button(contacts_frame2, text="Manage Contacts", command=lambda: open_contact2s2_window(profiles_listbox.get(tk.ACTIVE))).pack(side=tk.LEFT)
+    contacts_label2 = tk.Label(contacts_frame2, text="Incomplete", fg="red")
+    contacts_label2.pack(side=tk.LEFT, padx=10)
+
+    contacts_frame3 = tk.Frame(content_frame)
+    contacts_frame3.pack(pady=5)
+    tk.Button(contacts_frame3, text="Manage Contacts", command=lambda: open_contact3s3_window(profiles_listbox.get(tk.ACTIVE))).pack(side=tk.LEFT)
+    contacts_label3 = tk.Label(contacts_frame3, text="Incomplete", fg="red")
+    contacts_label3.pack(side=tk.LEFT, padx=10)
+    # Button to generate PDF
+    tk.Button(content_frame, text="Generate PDF", command=generate_pdf).pack(pady=10)
+
+    # Populate profiles listbox
+    for profile in profiles:
+        profiles_listbox.insert(tk.END, profile['name'])
+
+    root.mainloop()
+
+open_main_window()
